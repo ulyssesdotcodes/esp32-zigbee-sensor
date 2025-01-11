@@ -1,0 +1,13 @@
+# stores paths for some unknown reason
+.vscode/
+
+build
+build/
+build_*/
+_build/
+sdkconfig
+sdkconfig.old
+__pycache__/
+out/
+
+managed_components
