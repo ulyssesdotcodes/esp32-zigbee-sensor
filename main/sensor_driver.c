@@ -52,7 +52,7 @@ static const char *TAG = "ESP_ZB_TEMP_SENSOR";
 
 /* LED strip configuration */
 #define INPUT_PIN   ADC_CHANNEL_2
-#define OUTPUT_PIN GPIO_NUM_10
+#define OUTPUT_PIN GPIO_NUM_18
 
 #define EXAMPLE_ADC_ATTEN           ADC_ATTEN_DB_12
 
@@ -70,8 +70,8 @@ static void sensor_read(void* arg)
     ESP_LOGI(TAG, "start sensor_read");
 
         ESP_LOGI(TAG, "setting gpio pin  %d to level %d", OUTPUT_PIN, 1);
-        gpio_set_level(OUTPUT_PIN, 1);
-        vTaskDelay(pdMS_TO_TICKS(10));
+        ESP_ERROR_CHECK(gpio_set_level(OUTPUT_PIN, 1));
+        vTaskDelay(pdMS_TO_TICKS(100));
         ESP_LOGI(TAG, "reading...");
         int adc_raw = 0;
         ESP_ERROR_CHECK(adc_oneshot_read(adc1_handle, INPUT_PIN, &adc_raw));
@@ -79,13 +79,11 @@ static void sensor_read(void* arg)
         int voltage = 0;
         ESP_ERROR_CHECK(adc_cali_raw_to_voltage(adc_cali_channel_handle, adc_raw, &voltage));
         ESP_LOGI(TAG, "ADC%d Channel[%d] Voltage: %d", ADC_UNIT_1 + 1, INPUT_PIN, voltage);
-        vTaskDelay(pdMS_TO_TICKS(10));
         gpio_set_level(OUTPUT_PIN, 0);
-        // vTaskDelay(pdMS_TO_TICKS(interval * 1000));
         calls += 1;
 
         if(func_ptr) {
-            func_ptr((float)(calls % 50));
+            func_ptr(((float)voltage) / 3040.0);
         }
 }
 
@@ -118,13 +116,13 @@ static void sensor_driver_init(){
     //set as output mode
     io_conf.mode = GPIO_MODE_OUTPUT;
     //bit mask of the pins that you want to set,e.g.GPIO18/19
-    io_conf.pin_bit_mask = OUTPUT_PIN;
+    io_conf.pin_bit_mask = 1ULL<<OUTPUT_PIN;
     //disable pull-down mode
     io_conf.pull_down_en = 0;
-    //disable pull-up mode
+    //enable pull-up mode
     io_conf.pull_up_en = 0;
     //configure GPIO with the given settings
-    gpio_config(&io_conf);
+    ESP_ERROR_CHECK(gpio_config(&io_conf));
 
     // return sensor_read();
     const esp_timer_create_args_t periodic_timer_args = {

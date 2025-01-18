@@ -33,7 +33,7 @@
 
 static int16_t zb_humidity_to_s16(float humidity)
 {
-    return (int16_t)(humidity);
+    return (int16_t)(humidity * 10000);
 }
 
 static void esp_app_sensor_handler(float humidity)
@@ -118,6 +118,10 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
             esp_zb_scheduler_alarm((esp_zb_callback_t)bdb_start_top_level_commissioning_cb, ESP_ZB_BDB_MODE_NETWORK_STEERING, 1000);
         }
         break;
+    case ESP_ZB_COMMON_SIGNAL_CAN_SLEEP:
+        ESP_LOGI(TAG, "Zigbee can sleep");
+        esp_zb_sleep_now();
+        break;
     default:
         ESP_LOGI(TAG, "ZDO signal: %s (0x%x), status: %s", esp_zb_zdo_signal_to_string(sig_type), sig_type,
                  esp_err_to_name(err_status));
@@ -128,13 +132,17 @@ void esp_zb_app_signal_handler(esp_zb_app_signal_t *signal_struct)
 static esp_err_t esp_zb_power_save_init(void)
 {
     esp_err_t rc = ESP_OK;
+#ifdef CONFIG_PM_ENABLE
     int cur_cpu_freq_mhz = CONFIG_ESP_DEFAULT_CPU_FREQ_MHZ;
     esp_pm_config_t pm_config = {
         .max_freq_mhz = cur_cpu_freq_mhz,
-        .min_freq_mhz = 10,
+        .min_freq_mhz = cur_cpu_freq_mhz,
+#if CONFIG_FREERTOS_USE_TICKLESS_IDLE
         .light_sleep_enable = true
+#endif
     };
     rc = esp_pm_configure(&pm_config);
+#endif
     return rc;
 }
 
@@ -144,7 +152,6 @@ static esp_zb_cluster_list_t *custom_humidity_sensor_clusters_create(esp_zb_humi
     esp_zb_attribute_list_t *basic_cluster = esp_zb_basic_cluster_create(&(humidity_sensor->basic_cfg));
     ESP_ERROR_CHECK(esp_zb_basic_cluster_add_attr(basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_MANUFACTURER_NAME_ID, MANUFACTURER_NAME));
     ESP_ERROR_CHECK(esp_zb_basic_cluster_add_attr(basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_MODEL_IDENTIFIER_ID, MODEL_IDENTIFIER));
-    ESP_ERROR_CHECK(esp_zb_basic_cluster_add_attr(basic_cluster, ESP_ZB_ZCL_ATTR_BASIC_POWER_SOURCE_ID, ZB_BATTE));
     ESP_ERROR_CHECK(esp_zb_cluster_list_add_basic_cluster(cluster_list, basic_cluster, ESP_ZB_ZCL_CLUSTER_SERVER_ROLE));
     ESP_ERROR_CHECK(esp_zb_cluster_list_add_identify_cluster(cluster_list, esp_zb_identify_cluster_create(&(humidity_sensor->identify_cfg)), ESP_ZB_ZCL_CLUSTER_SERVER_ROLE));
     ESP_ERROR_CHECK(esp_zb_cluster_list_add_identify_cluster(cluster_list, esp_zb_zcl_attr_list_create(ESP_ZB_ZCL_CLUSTER_ID_IDENTIFY), ESP_ZB_ZCL_CLUSTER_CLIENT_ROLE));
@@ -170,8 +177,9 @@ static void esp_zb_task(void *pvParameters)
     ESP_EARLY_LOGI(TAG, "start zigbee stack");
     /* Initialize Zigbee stack */
     esp_zb_cfg_t zb_nwk_cfg = ESP_ZB_ZED_CONFIG();
+        esp_zb_sleep_enable(true);
     esp_zb_init(&zb_nwk_cfg);
-    //esp_zb_power_save_init();
+    
 
     ESP_EARLY_LOGI(TAG, "humidity sensor");
     /* Create customized humidity sensor endpoint */
@@ -220,6 +228,7 @@ void app_main(void)
         .host_config = ESP_ZB_DEFAULT_HOST_CONFIG(),
     };
     ESP_ERROR_CHECK(nvs_flash_init());
+    ESP_ERROR_CHECK(esp_zb_power_save_init());
     ESP_ERROR_CHECK(esp_zb_platform_config(&config));
 
     /* Start Zigbee stack task */
