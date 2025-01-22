@@ -1,4 +1,5 @@
 #include "esp_zigbee_core.h"
+#include "zboss_api.h"
 
 /* Zigbee configuration */
 #define INSTALLCODE_POLICY_ENABLE       false   /* enable the install code policy for security */
@@ -43,8 +44,10 @@ typedef struct esp_zb_humidity_sensor_cfg_s {
                 .measured_value = ESP_ZB_ZCL_REL_HUMIDITY_MEASUREMENT_MEASURED_VALUE_DEFAULT, \
                 .min_value = ESP_ZB_ZCL_REL_HUMIDITY_MEASUREMENT_MIN_MEASURED_VALUE_DEFAULT,                \
                 .max_value = ESP_ZB_ZCL_REL_HUMIDITY_MEASUREMENT_MAX_MEASURED_VALUE_DEFAULT,                \
-            },                                                                                      \
+            }                                                                                      \
     }
+
+
 
 /**
  * @brief  Create a standard HA humidity sensor cluster list.
@@ -55,7 +58,7 @@ typedef struct esp_zb_humidity_sensor_cfg_s {
  * @return Pointer to cluster list  @ref esp_zb_cluster_list_s
  *
  */
-esp_zb_cluster_list_t  *esp_zb_humidity_sensor_clusters_create(esp_zb_humidity_sensor_cfg_t *humidity_sensor);
+esp_zb_cluster_list_t  *esp_zb_humidity_sensor_clusters_create(esp_zb_humidity_sensor_cfg_t *humidity_sensor, float battery_percentage);
 
 /**
  * @brief  Create a standard single HA humidity sensor endpoint.
@@ -68,7 +71,7 @@ esp_zb_cluster_list_t  *esp_zb_humidity_sensor_clusters_create(esp_zb_humidity_s
  * @return Pointer to esp_zb_ep_list_t @ref esp_zb_ep_list_s
  *
  */
-esp_zb_ep_list_t *esp_zb_humidity_sensor_ep_create(uint8_t endpoint_id, esp_zb_humidity_sensor_cfg_t *humidity_sensor);
+esp_zb_ep_list_t *esp_zb_humidity_sensor_ep_create(uint8_t endpoint_id, esp_zb_humidity_sensor_cfg_t *humidity_sensor, float battery_percentage);
 
 #define ESP_ZB_ZED_CONFIG()                                         \
     {                                                               \
